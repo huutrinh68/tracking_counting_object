@@ -3,3 +3,4 @@
 *.mov
 outputs
 data/video
+__pycache__
