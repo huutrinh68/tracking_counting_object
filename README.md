@@ -7,7 +7,7 @@ $ docker exec -it <container_id> bash
 
 ### Convert darknet weights to tensorflow model
 ```
-python save_model.py --model yolov4
+$ python save_model.py --model yolov4
 ```
 
 ### Run
