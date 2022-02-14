@@ -1,4 +1,5 @@
 import cv2
+import math
 import numpy as np
 import matplotlib.pyplot as plt
 import time
@@ -45,7 +46,7 @@ margin = 0
 
 
 def del_id(pts):
-    previous_time = datetime.datetime.now() - datetime.timedelta(hours=0, minutes=5)
+    previous_time = datetime.datetime.now() - datetime.timedelta(hours=0, minutes=5, seconds=20)
     del_ids = []
     for track_id, value in pts.items():
         # check timestamp of the first track_id
@@ -103,6 +104,47 @@ def checkDirection2(pts, x_c, y_c, direction):
         return True
     else:
         return False
+
+
+def distance(point1, point2):
+    return math.sqrt((point2[1] - point1[1])**2 + (point2[0] - point1[0])**2)
+
+
+def where_is_point(points, track_points):
+    ok_id = []
+    ng_id = []
+    for track_id, value in track_points.items():
+        tracjectories = [(v['x_c'], v['y_c']) for v in value]
+        start_point = tracjectories[0]
+        stop_point = tracjectories[-1]
+
+        start_distance = []
+        start_distance.append(distance(start_point, points['pointA']))
+        start_distance.append(distance(start_point, points['pointB']))
+        start_distance.append(distance(start_point, points['pointC']))
+        start_distance.append(distance(start_point, points['pointD']))
+        min_index = start_distance.index(min(start_distance))
+        start_name = list(points.keys())[min_index]
+        print("start_name: {}".format(start_name))
+
+        stop_distance = []
+        stop_distance.append(distance(stop_point, points['pointA']))
+        stop_distance.append(distance(stop_point, points['pointD']))
+        stop_distance.append(distance(stop_point, points['pointC']))
+        stop_distance.append(distance(stop_point, points['pointD']))
+        min_index = stop_distance.index(min(stop_distance))
+        stop_name = list(points.keys())[min_index]
+        print("stop_name: {}".format(stop_name))
+
+        if (start_name == 'pointA' and stop_name == 'pointB') or \
+                (start_name == 'pointB' and stop_name == 'pointA') or \
+                (start_name == 'pointC' and stop_name == 'pointD') or \
+                (start_name == 'pointD' and stop_name == 'pointC'):
+            ok_id.append(track_id)
+        else:
+            ng_id.append(track_id)
+
+    return ok_id, ng_id
 
 
 def main(_argv):
@@ -165,6 +207,7 @@ def main(_argv):
     counted_ids = deque(maxlen=10000)
     frame_num = 0
     # while video is running
+    stop_points = {"pointA": (30, 380), "pointB": (746, 226), "pointC": (358, 1), "pointD": (806, 483)}
     while True:
         return_value, frame = vid.read()
         if return_value:
@@ -234,15 +277,15 @@ def main(_argv):
         # allowed_classes = list(class_names.values())
         #
         # custom allowed classes (uncomment line below to customize tracker for only people)
-        # allowed_classes = ['person']
+        allowed_classes = ['person']
         # allowed_classes = ['car', 'bus', 'truck']
-        allowed_classes = ['cow']
+        # allowed_classes = ['cow']
 
         # draw center line
-        if direction:
-            cv2.line(frame, (W // 2, 0), (W // 2, H), (0, 0, 255), 2)
-        else:
-            cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 255), 2)
+        # if direction:
+        #     cv2.line(frame, (W // 2, 0), (W // 2, H), (0, 0, 255), 2)
+        # else:
+        #     cv2.line(frame, (0, H // 2), (W, H // 2), (0, 0, 255), 2)
 
         # loop through objects and use class index to get class name, allow only classes in allowed_classes list
         names = []
@@ -334,9 +377,15 @@ def main(_argv):
         result = np.asarray(frame)
         result = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
 
+        cv2.circle(result, stop_points['pointA'], 3, (255, 0, 0), thickness=-1, lineType=cv2.LINE_8, shift=0)
+        cv2.circle(result, stop_points['pointB'], 3, (255, 0, 0), thickness=-1, lineType=cv2.LINE_8, shift=0)
+        cv2.circle(result, stop_points['pointC'], 3, (255, 0, 0), thickness=-1, lineType=cv2.LINE_8, shift=0)
+        cv2.circle(result, stop_points['pointD'], 3, (255, 0, 0), thickness=-1, lineType=cv2.LINE_8, shift=0)
+
         # check time to remove not counted id
         pts = del_id(pts)
         counted_ids = del_track_id(counted_ids, second_duration=3)
+        ok_id, ng_id = where_is_point(stop_points, pts)
         if direction == 1:
             info = [
                 ("L->R", direction_count_1),
@@ -345,6 +394,8 @@ def main(_argv):
                 # ("T<-B", direction_count_2),
                 # ("out", direction_count_1),
                 # ("in", direction_count_2),
+                ("ok_id", ok_id),
+                ("ng_id", ng_id),
                 ("FPS", fps),
             ]
         else:
@@ -355,6 +406,8 @@ def main(_argv):
                 ("T<-B", direction_count_2),
                 # ("out", direction_count_1),
                 # ("in", direction_count_2),
+                ("ok_id", ok_id),
+                ("ng_id", ng_id),
                 ("FPS", fps),
             ]
 
