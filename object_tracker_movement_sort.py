@@ -13,12 +13,12 @@ from core.yolov4 import filter_boxes
 from tensorflow.python.saved_model import tag_constants
 from core.config import cfg
 import os
-from deep_sort import preprocessing
+from core import preprocessing
 from collections import defaultdict, deque
 from motrackers import CentroidTracker, CentroidKF_Tracker, SORT, IOUTracker
 # tracker = CentroidTracker(max_lost=0, tracker_output_format='mot_challenge')
 # tracker = CentroidKF_Tracker(max_lost=0, tracker_output_format='mot_challenge')
-tracker = SORT(max_lost=10, tracker_output_format='mot_challenge', iou_threshold=0.3)
+tracker = SORT(max_lost=3, tracker_output_format='mot_challenge', iou_threshold=0.3)
 # tracker = IOUTracker(max_lost=2, iou_threshold=0.5, min_detection_confidence=0.4, max_detection_confidence=0.7,
 #                      tracker_output_format='mot_challenge')
 
@@ -177,39 +177,6 @@ def yxyx2xywh(yxyx):
         return np.array([left, top, width, height]).astype('int')
     else:
         raise ValueError("Input shape not compatible.")
-
-
-def NMS(boxes, confidences, class_ids, overlapThresh=0.7):
-    # Return an empty list, if no boxes given
-    if len(boxes) == 0:
-        return [], [], []
-    x1 = boxes[:, 0]  # x coordinate of the top-left corner
-    y1 = boxes[:, 1]  # y coordinate of the top-left corner
-    x2 = boxes[:, 2]  # x coordinate of the bottom-right corner
-    y2 = boxes[:, 3]  # y coordinate of the bottom-right corner
-    # Compute the area of the bounding boxes and sort the bounding
-    # Boxes by the bottom-right y-coordinate of the bounding box
-    areas = (x2 - x1 + 1) * (y2 - y1 + 1)  # We add 1, because the pixel at the start as well as at the end counts
-    # The indices of all boxes at start. We will redundant indices one by one.
-    indices = np.arange(len(x1))
-    for i, box in enumerate(boxes):
-        # Create temporary indices
-        temp_indices = indices[indices != i]
-        # Find out the coordinates of the intersection box
-        xx1 = np.maximum(box[0], boxes[temp_indices, 0])
-        yy1 = np.maximum(box[1], boxes[temp_indices, 1])
-        xx2 = np.minimum(box[2], boxes[temp_indices, 2])
-        yy2 = np.minimum(box[3], boxes[temp_indices, 3])
-        # Find out the width and the height of the intersection box
-        w = np.maximum(0, xx2 - xx1 + 1)
-        h = np.maximum(0, yy2 - yy1 + 1)
-        # compute the ratio of overlap
-        overlap = (w * h) / areas[temp_indices]
-        # if the actual boungding box has an overlap bigger than treshold with any other box, remove it's index
-        if np.any(overlap) > overlapThresh:
-            indices = indices[indices != i]
-    # return only the boxes at the remaining indices
-    return boxes[indices].astype(int), confidences[indices], class_ids[indices]
 
 
 def main(_argv):
