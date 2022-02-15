@@ -46,7 +46,7 @@ margin = 0
 
 
 def del_id(pts):
-    previous_time = datetime.datetime.now() - datetime.timedelta(hours=0, minutes=5, seconds=20)
+    previous_time = datetime.datetime.now() - datetime.timedelta(hours=0, minutes=0, seconds=20)
     del_ids = []
     for track_id, value in pts.items():
         # check timestamp of the first track_id
@@ -104,6 +104,21 @@ def checkDirection2(pts, x_c, y_c, direction):
         return True
     else:
         return False
+
+
+def drawMovementFlow(pts, image):
+    for track_id, value in pts.items():
+        # get random color
+        color = list(np.random.choice(range(256), size=3))
+        # convert int64 to int, then get tuple
+        color = tuple(list(map(int, color)))
+        tracjectories = [(v['x_c'], v['y_c']) for v in value]
+        tracjectories = tracjectories[::-1]
+
+        for i in range(1, len(tracjectories)):
+            cv2.line(image, tracjectories[i - 1], tracjectories[i], color, 1)
+
+    return image
 
 
 def distance(point1, point2):
@@ -198,7 +213,8 @@ def main(_argv):
         height = int(vid.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = int(vid.get(cv2.CAP_PROP_FPS))
         codec = cv2.VideoWriter_fourcc(*FLAGS.output_format)
-        out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
+        # out = cv2.VideoWriter(FLAGS.output, codec, fps, (width, height))
+        out = cv2.VideoWriter(FLAGS.output, codec, fps, (height, width))
 
     pts = defaultdict(list)
     direction = 1
@@ -207,7 +223,7 @@ def main(_argv):
     counted_ids = deque(maxlen=10000)
     frame_num = 0
     # while video is running
-    stop_points = {"pointA": (30, 380), "pointB": (746, 226), "pointC": (358, 1), "pointD": (806, 483)}
+    stop_points = {"pointA": (28, 480), "pointB": (1032, 250), "pointC": (871, 635), "pointD": (470, 1)}
     while True:
         return_value, frame = vid.read()
         if return_value:
@@ -216,6 +232,7 @@ def main(_argv):
         else:
             print('Video has ended or failed, try a different video format!')
             break
+        frame = cv2.rotate(frame, cv2.ROTATE_90_COUNTERCLOCKWISE)
         H, W = frame.shape[0:2]
         frame_num += 1
         # print('Frame #: ', frame_num)
@@ -384,12 +401,12 @@ def main(_argv):
 
         # check time to remove not counted id
         pts = del_id(pts)
-        counted_ids = del_track_id(counted_ids, second_duration=3)
+        # counted_ids = del_track_id(counted_ids, second_duration=3)
         ok_id, ng_id = where_is_point(stop_points, pts)
         if direction == 1:
             info = [
-                ("L->R", direction_count_1),
-                ("L<-R", direction_count_2),
+                # ("L->R", direction_count_1),
+                # ("L<-R", direction_count_2),
                 # ("T->B", direction_count_1),
                 # ("T<-B", direction_count_2),
                 # ("out", direction_count_1),
@@ -402,8 +419,8 @@ def main(_argv):
             info = [
                 # ("L->R", direction_count_1),
                 # ("L<-R", direction_count_2),
-                ("T->B", direction_count_1),
-                ("T<-B", direction_count_2),
+                # ("T->B", direction_count_1),
+                # ("T<-B", direction_count_2),
                 # ("out", direction_count_1),
                 # ("in", direction_count_2),
                 ("ok_id", ok_id),
@@ -411,6 +428,7 @@ def main(_argv):
                 ("FPS", fps),
             ]
 
+        result = drawMovementFlow(pts, result)
         # Display the monitor result
         for (i, (k, v)) in enumerate(info):
             text = "{}: {}".format(k, v)
